@@ -139,14 +139,14 @@
             color: white;
         }
 
-        /* 計時器樣式 */
-        #memory-timer {
-            animation: pulse 1s infinite;
+        /* 計時器脈動動畫 */
+        @keyframes pulse-timer {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
         }
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.8; }
+        .animate-pulse-timer {
+            animation: pulse-timer 1.5s infinite;
         }
     </style>
 </head>
@@ -280,11 +280,14 @@
 
         <!-- 右側展示區 -->
         <section id="main-stage" class="flex-grow relative bg-gradient-to-br from-gray-900 to-black p-4 flex flex-wrap justify-center items-center gap-3 overflow-y-auto">
-            <!-- 記憶計時器顯示區 (置頂) -->
-            <div id="memory-timer" class="absolute top-10 left-1/2 -translate-x-1/2 bg-orange-600/20 border border-orange-500/40 px-6 py-2 rounded-full hidden flex items-center gap-2 z-10">
-                <i data-lucide="timer" class="w-4 h-4 text-orange-400"></i>
-                <span class="text-orange-400 font-bold tracking-widest uppercase text-xs">剩餘觀察時間: </span>
-                <span id="timer-seconds" class="text-white font-bold text-xl min-w-[2ch] text-center">5</span>
+            
+            <!-- 記憶計時器 (移至右下角) -->
+            <div id="memory-timer" class="absolute bottom-6 right-6 bg-orange-600/40 backdrop-blur-md border border-orange-500/50 px-5 py-3 rounded-2xl hidden flex flex-col items-center gap-1 z-10 animate-pulse-timer shadow-2xl shadow-orange-900/20">
+                <span class="text-orange-200 font-bold uppercase text-[10px] tracking-widest">觀察倒數</span>
+                <div class="flex items-center gap-2">
+                    <i data-lucide="timer" class="w-4 h-4 text-orange-400"></i>
+                    <span id="timer-seconds" class="text-white font-bold text-3xl min-w-[1.5ch] text-center">5</span>
+                </div>
             </div>
 
             <div id="cards-container" class="flex flex-wrap justify-center items-center gap-3">
@@ -293,7 +296,8 @@
                     <p class="text-lg">選擇模式並點擊開始</p>
                 </div>
             </div>
-            <!-- 懸浮答案顯示區 -->
+
+            <!-- 懸浮答案顯示區 (找缺牌模式專用，位置與計時器共用) -->
             <div id="floating-ans-container" class="absolute bottom-6 right-6 bg-black/60 backdrop-blur-md border border-white/20 p-4 rounded-2xl hidden-answer flex flex-col items-center gap-2">
                 <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">缺失牌面</p>
                 <div id="floating-ans-cards" class="flex gap-2"></div>
@@ -321,7 +325,7 @@
         let missingAnswers = [];
         let memorySequence = [];
         let memoryTimer = null;
-        let countdownInterval = null; // 計時器間隔
+        let countdownInterval = null;
 
         function showToast(msg) {
             const t = document.getElementById('toast');
@@ -357,7 +361,6 @@
             `;
             card.innerHTML = content;
 
-            // 增加點擊事件：手動翻牌
             card.onclick = () => {
                 card.classList.toggle('flipped');
             };
@@ -367,7 +370,6 @@
 
         function setMode(mode) {
             currentMode = mode;
-            // 切換模式時強制清除計時
             if(countdownInterval) clearInterval(countdownInterval);
             document.getElementById('memory-timer').classList.add('hidden');
 
@@ -389,7 +391,6 @@
             lucide.createIcons();
         }
 
-        // --- 抽牌模式 ---
         function initDeck() {
             fullDeck = [];
             suits.forEach(s => ranks.forEach(r => fullDeck.push({ rank: r, suit: s })));
@@ -447,7 +448,6 @@
             document.getElementById('cards-container').innerHTML = '<p class="text-gray-500 italic">牌組已重新設定</p>';
         }
 
-        // --- 找缺牌模式 ---
         function generateMissing() {
             const range = parseInt(document.getElementById('missing-range').value);
             const mCount = parseInt(document.getElementById('missing-count').value);
@@ -481,7 +481,6 @@
             if(el) el.classList.toggle('show-answer-box');
         }
 
-        // --- 記憶力模式 ---
         function startMemory() {
             const count = parseInt(document.getElementById('memory-count').value);
             const time = parseInt(document.getElementById('memory-time').value);
@@ -495,7 +494,6 @@
             memorySequence = [];
             revealBtn.disabled = true;
 
-            // 確保同一題不重複
             let cardPool = [];
             while(cardPool.length < count) {
                 let s = suitMode === 'random' ? suits[Math.floor(Math.random() * 4)] : suits[parseInt(suitMode)];
@@ -514,11 +512,9 @@
                 stage.appendChild(createCardElement(card.rank, card.suit, false, i * 0.1));
             });
 
-            // 清除之前的計時器
             if(countdownInterval) clearInterval(countdownInterval);
             if(memoryTimer) clearTimeout(memoryTimer);
 
-            // 顯示與啟動計時器
             let timeLeft = time;
             timerSec.innerText = timeLeft;
             timerBox.classList.remove('hidden');
