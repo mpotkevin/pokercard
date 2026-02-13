@@ -74,12 +74,9 @@
             font-weight: bold;
         }
         
-        .mini .card-rank-small { font-size: 0.9rem; }
-
         .card-suit-small {
             font-size: 0.875rem;
         }
-        .mini .card-suit-small { font-size: 0.7rem; }
 
         .card-suit-center {
             position: absolute;
@@ -89,7 +86,6 @@
             font-size: 3.5rem;
             opacity: 0.9;
         }
-        .mini .card-suit-center { font-size: 2rem; }
 
         .card-back {
             background-color: #b91c1c;
@@ -120,7 +116,7 @@
             pointer-events: auto !important;
         }
 
-        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar { width: 4px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
 
@@ -129,17 +125,12 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.2s;
         }
-        .sidebar-item:focus-within {
-            border-color: #6366f1;
-            background: rgba(99, 102, 241, 0.1);
-        }
         
         select.bg-transparent option {
             background-color: #1a1a1a;
             color: white;
         }
 
-        /* 計時器脈動動畫 */
         @keyframes pulse-timer {
             0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
             70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
@@ -152,16 +143,17 @@
 </head>
 <body class="h-screen flex flex-col">
 
-    <!-- 頂部標題 -->
+    <!-- 頂部標題與導航 -->
     <header class="bg-black/40 backdrop-blur-md p-4 border-b border-white/10 flex justify-between items-center px-8">
         <h1 class="text-xl font-bold flex items-center gap-3 tracking-wider">
             <span class="bg-indigo-600 p-1.5 rounded-lg"><i data-lucide="playing-cards" class="w-5 h-5"></i></span>
             撲克認知訓練系統
         </h1>
         <nav class="flex gap-1 bg-white/5 p-1 rounded-xl">
-            <button onclick="setMode('draw')" id="btn-draw" class="px-6 py-2 rounded-lg text-sm transition-all font-medium">隨機抽牌</button>
-            <button onclick="setMode('missing')" id="btn-missing" class="px-6 py-2 rounded-lg text-sm transition-all font-medium">視覺找缺</button>
-            <button onclick="setMode('memory')" id="btn-memory" class="px-6 py-2 rounded-lg text-sm transition-all font-medium">序列記憶</button>
+            <button onclick="setMode('draw')" id="btn-draw" class="px-4 py-2 rounded-lg text-sm transition-all font-medium">隨機抽牌</button>
+            <button onclick="setMode('missing')" id="btn-missing" class="px-4 py-2 rounded-lg text-sm transition-all font-medium">視覺找缺</button>
+            <button onclick="setMode('memory')" id="btn-memory" class="px-4 py-2 rounded-lg text-sm transition-all font-medium">序列記憶</button>
+            <button onclick="setMode('sort')" id="btn-sort" class="px-4 py-2 rounded-lg text-sm transition-all font-medium">數字排序</button>
         </nav>
     </header>
 
@@ -268,7 +260,34 @@
                 <button onclick="revealMemory()" id="btn-reveal-memory" disabled class="w-full border border-white/10 text-gray-300 py-3 rounded-xl hover:bg-white/5 transition disabled:opacity-30">
                     核對全部答案
                 </button>
-                <p class="text-[10px] text-gray-500 text-center italic">點擊畫面上任何撲克牌即可手動翻面</p>
+                <p class="text-[10px] text-gray-500 text-center italic">點擊牌面即可手動翻開/蓋上</p>
+            </div>
+
+            <!-- 模式四：數字排序 -->
+            <div id="controls-sort" class="mode-control hidden space-y-6">
+                <div>
+                    <h3 class="text-cyan-400 text-xs font-bold uppercase tracking-widest mb-4">排序遊戲設定</h3>
+                    <div class="space-y-4">
+                        <div class="sidebar-item p-3 rounded-xl">
+                            <label class="block text-xs text-gray-400 mb-1">指定花色</label>
+                            <select id="sort-suit" class="bg-transparent w-full text-lg font-bold outline-none cursor-pointer">
+                                <option value="random">隨機花色</option>
+                                <option value="0">黑桃 ♠</option>
+                                <option value="1">紅心 ♥</option>
+                                <option value="2">方塊 ♦</option>
+                                <option value="3">梅花 ♣</option>
+                            </select>
+                        </div>
+                        <div class="sidebar-item p-3 rounded-xl">
+                            <label class="block text-xs text-gray-400 mb-1">排序範圍 (1-13)</label>
+                            <input type="number" id="sort-range" value="5" min="2" max="13" class="bg-transparent w-full text-xl font-bold outline-none">
+                        </div>
+                    </div>
+                </div>
+                <button onclick="generateSort()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white py-4 rounded-2xl font-bold shadow-lg shadow-cyan-500/20 transition-all active:scale-95">
+                    打亂排序
+                </button>
+                <p class="text-[10px] text-gray-500 text-center italic">請觀察亂序題目並排列實體撲克牌</p>
             </div>
 
             <!-- 底部歷史區 -->
@@ -279,10 +298,10 @@
         </aside>
 
         <!-- 右側展示區 -->
-        <section id="main-stage" class="flex-grow relative bg-gradient-to-br from-gray-900 to-black p-4 flex flex-wrap justify-center items-center gap-3 overflow-y-auto">
+        <section id="main-stage" class="flex-grow relative bg-gradient-to-br from-gray-900 to-black p-4 flex flex-col justify-center items-center overflow-hidden">
             
-            <!-- 記憶計時器 (移至右下角) -->
-            <div id="memory-timer" class="absolute bottom-6 right-6 bg-orange-600/40 backdrop-blur-md border border-orange-500/50 px-5 py-3 rounded-2xl hidden flex flex-col items-center gap-1 z-10 animate-pulse-timer shadow-2xl shadow-orange-900/20">
+            <!-- 觀察倒數 (右下角) -->
+            <div id="memory-timer" class="absolute bottom-6 right-6 bg-orange-600/40 backdrop-blur-md border border-orange-500/50 px-5 py-3 rounded-2xl hidden flex flex-col items-center gap-1 z-10 animate-pulse-timer shadow-2xl">
                 <span class="text-orange-200 font-bold uppercase text-[10px] tracking-widest">觀察倒數</span>
                 <div class="flex items-center gap-2">
                     <i data-lucide="timer" class="w-4 h-4 text-orange-400"></i>
@@ -290,14 +309,15 @@
                 </div>
             </div>
 
-            <div id="cards-container" class="flex flex-wrap justify-center items-center gap-3">
+            <!-- 容器：預設維持自動換行 -->
+            <div id="cards-container" class="flex flex-wrap justify-center items-center gap-3 w-full p-4 overflow-y-auto">
                 <div class="text-center text-gray-600">
                     <i data-lucide="mouse-pointer-2" class="w-12 h-12 mx-auto mb-4 opacity-20"></i>
                     <p class="text-lg">選擇模式並點擊開始</p>
                 </div>
             </div>
 
-            <!-- 懸浮答案顯示區 (找缺牌模式專用) -->
+            <!-- 懸浮答案顯示區 -->
             <div id="floating-ans-container" class="absolute bottom-6 right-6 bg-black/60 backdrop-blur-md border border-white/20 p-4 rounded-2xl hidden-answer flex flex-col items-center gap-2">
                 <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">缺失牌面</p>
                 <div id="floating-ans-cards" class="flex gap-2"></div>
@@ -360,11 +380,7 @@
                 </div>
             `;
             card.innerHTML = content;
-
-            card.onclick = () => {
-                card.classList.toggle('flipped');
-            };
-
+            card.onclick = () => card.classList.toggle('flipped');
             return card;
         }
 
@@ -380,7 +396,10 @@
             document.getElementById(`btn-${mode}`).classList.add('bg-indigo-600', 'text-white');
             
             const stage = document.getElementById('cards-container');
+            // 確保容器始終維持 Grid/Wrap 佈局
+            stage.className = "flex flex-wrap justify-center items-center gap-3 w-full p-4 overflow-y-auto";
             stage.innerHTML = '';
+            
             document.getElementById('floating-ans-container').classList.remove('show-answer-box');
             document.getElementById('history-section').classList.add('hidden');
             
@@ -416,7 +435,7 @@
                 } else {
                     let filteredDeck = suitMode === 'random' ? fullDeck : fullDeck.filter(c => c.suit === suits[parseInt(suitMode)]);
                     if (filteredDeck.length === 0) {
-                        showToast("指定牌組已用完"); break;
+                        showToast("牌組已抽完"); break;
                     }
                     if (drawHistory.length >= limit) {
                         showToast("已達上限"); break;
@@ -445,7 +464,7 @@
 
         function resetDraw() {
             initDeck();
-            document.getElementById('cards-container').innerHTML = '<p class="text-gray-500 italic">牌組已重新設定</p>';
+            document.getElementById('cards-container').innerHTML = '<p class="text-gray-500 italic">牌組已重置</p>';
         }
 
         function generateMissing() {
@@ -494,25 +513,16 @@
             memorySequence = [];
             revealBtn.disabled = true;
 
-            // 準備不重複牌組
-            let cardPool = [];
             let sourceDeck = [];
-
             if (suitMode === 'random') {
-                // 從 52 張牌中準備
                 suits.forEach(s => ranks.forEach(r => sourceDeck.push({ rank: r, suit: s })));
                 if (count > 52) count = 52;
             } else {
-                // 從指定花色的 13 張中準備
                 let s = suits[parseInt(suitMode)];
                 ranks.forEach(r => sourceDeck.push({ rank: r, suit: s }));
-                if (count > 13) {
-                    showToast("指定花色上限為 13 張");
-                    count = 13;
-                }
+                if (count > 13) { showToast("花色上限為 13 張"); count = 13; }
             }
 
-            // 洗牌並抽取
             sourceDeck.sort(() => Math.random() - 0.5);
             memorySequence = sourceDeck.slice(0, count);
 
@@ -539,7 +549,7 @@
             memoryTimer = setTimeout(() => {
                 const cards = stage.querySelectorAll('.card');
                 cards.forEach(c => c.classList.add('flipped'));
-                showToast("牌面已隱藏，點擊單張可手動翻開！");
+                showToast("牌面已覆蓋，點擊可單張翻開");
                 revealBtn.disabled = false;
             }, time * 1000);
         }
@@ -548,6 +558,27 @@
             const cards = document.querySelectorAll('.card');
             cards.forEach(c => c.classList.remove('flipped'));
             document.getElementById('btn-reveal-memory').disabled = true;
+        }
+
+        // --- 數字排序模式 (恢復為原始 Grid/Wrap 佈局) ---
+        function generateSort() {
+            const range = parseInt(document.getElementById('sort-range').value);
+            const suitMode = document.getElementById('sort-suit').value;
+            const stage = document.getElementById('cards-container');
+            
+            // 恢復為自動換行的佈局
+            stage.className = "flex flex-wrap justify-center items-center gap-3 w-full p-4 overflow-y-auto";
+            stage.innerHTML = '';
+
+            let suit = suitMode === 'random' ? suits[Math.floor(Math.random() * 4)] : suits[parseInt(suitMode)];
+            let pool = ranks.slice(0, range);
+            pool.sort(() => Math.random() - 0.5);
+
+            pool.forEach((r, idx) => {
+                stage.appendChild(createCardElement(r, suit, false, idx * 0.05));
+            });
+
+            showToast(`已打亂 1 到 ${range} 的順序`);
         }
 
         window.onload = () => {
