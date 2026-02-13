@@ -16,15 +16,15 @@
             overflow: hidden;
         }
 
-        /* 擬真撲克牌設計 - 調小尺寸以適應更多張數 */
+        /* 擬真撲克牌設計 */
         .card {
-            width: 130px; /* 基礎尺寸縮小 */
+            width: 130px;
             aspect-ratio: 2.5 / 3.5;
             perspective: 1000px;
             animation: cardEntrance 0.5s ease-out backwards;
+            cursor: pointer;
         }
 
-        /* 在平板或大螢幕稍微放大，但在手機保持精簡 */
         @media (min-width: 1024px) {
             .card { width: 140px; }
         }
@@ -93,14 +93,13 @@
             transform: rotateY(180deg);
         }
 
-        .hidden-answer {
-            filter: blur(12px);
-            opacity: 0.3;
-            transition: all 0.5s ease;
+        /* 答案顯示區動畫 */
+        .ans-reveal {
+            animation: slideUp 0.5s ease-out;
         }
-        .hidden-answer:hover {
-            filter: blur(0);
-            opacity: 1;
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         ::-webkit-scrollbar { width: 4px; }
@@ -111,10 +110,6 @@
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.2s;
-        }
-        .sidebar-item:focus-within {
-            border-color: #6366f1;
-            background: rgba(99, 102, 241, 0.1);
         }
         
         select.bg-transparent option {
@@ -206,7 +201,7 @@
                     生成題目
                 </button>
                 <button onclick="toggleAnswer()" class="w-full border border-white/10 text-gray-300 py-3 rounded-xl hover:bg-white/5 transition">
-                    顯示答案
+                    顯示/隱藏答案
                 </button>
             </div>
 
@@ -239,8 +234,9 @@
                     開始記憶
                 </button>
                 <button onclick="revealMemory()" id="btn-reveal-memory" disabled class="w-full border border-white/10 text-gray-300 py-3 rounded-xl hover:bg-white/5 transition disabled:opacity-30">
-                    核對答案
+                    公布全部答案
                 </button>
+                <p class="text-[10px] text-gray-500 text-center italic">※ 牌蓋住後，點擊單張牌可直接翻開</p>
             </div>
 
             <!-- 底部歷史區 -->
@@ -251,10 +247,19 @@
         </aside>
 
         <!-- 右側展示區 -->
-        <section id="main-stage" class="flex-grow relative bg-gradient-to-br from-gray-900 to-black p-4 flex flex-wrap justify-center items-center gap-3 overflow-y-auto">
-            <div class="text-center text-gray-600">
-                <i data-lucide="mouse-pointer-2" class="w-12 h-12 mx-auto mb-4 opacity-20"></i>
-                <p class="text-lg">選擇模式並點擊開始</p>
+        <section id="main-stage" class="flex-grow relative bg-gradient-to-br from-gray-900 to-black p-4 flex flex-col justify-center items-center gap-6 overflow-hidden">
+            <!-- 題目區 -->
+            <div id="stage-content" class="flex flex-wrap justify-center items-center gap-3 overflow-y-auto w-full max-h-[70%] p-2">
+                <div class="text-center text-gray-600">
+                    <i data-lucide="mouse-pointer-2" class="w-12 h-12 mx-auto mb-4 opacity-20"></i>
+                    <p class="text-lg">選擇模式並點擊開始</p>
+                </div>
+            </div>
+            
+            <!-- 答案區 (找缺牌專用) -->
+            <div id="answer-stage" class="w-full border-t border-white/5 pt-4 flex flex-col items-center gap-3 opacity-0 pointer-events-none transition-all duration-500">
+                <p class="text-xs font-bold text-emerald-500 uppercase tracking-widest">缺少的牌面答案</p>
+                <div id="answer-cards" class="flex flex-wrap justify-center gap-3"></div>
             </div>
         </section>
     </main>
@@ -276,9 +281,10 @@
         let currentMode = '';
         let fullDeck = [];
         let drawHistory = [];
-        let missingAnswers = [];
+        let missingAnswersData = [];
         let memorySequence = [];
         let memoryTimer = null;
+        let isMemoryActive = false;
 
         function showToast(msg) {
             const t = document.getElementById('toast');
@@ -313,19 +319,28 @@
                 </div>
             `;
             card.innerHTML = content;
+            
+            // 點擊事件 (用於記憶模式單張翻牌)
+            card.addEventListener('click', () => {
+                if (currentMode === 'memory' && isMemoryActive && card.classList.contains('flipped')) {
+                    card.classList.remove('flipped');
+                }
+            });
+
             return card;
         }
 
         function setMode(mode) {
             currentMode = mode;
+            isMemoryActive = false;
             document.querySelectorAll('.mode-control').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('nav button').forEach(el => el.classList.remove('bg-indigo-600', 'text-white'));
             
             document.getElementById(`controls-${mode}`).classList.remove('hidden');
             document.getElementById(`btn-${mode}`).classList.add('bg-indigo-600', 'text-white');
             
-            const stage = document.getElementById('main-stage');
-            stage.innerHTML = '';
+            document.getElementById('stage-content').innerHTML = '';
+            document.getElementById('answer-stage').classList.add('opacity-0', 'pointer-events-none');
             document.getElementById('history-section').classList.add('hidden');
             
             if (mode === 'draw') {
@@ -348,39 +363,28 @@
             const limit = parseInt(document.getElementById('draw-max').value);
             const allowRepeat = document.getElementById('allow-repeat').checked;
             const suitMode = document.getElementById('draw-suit').value;
-            const stage = document.getElementById('main-stage');
+            const stage = document.getElementById('stage-content');
             
             stage.innerHTML = '';
 
             for(let i=0; i < numToDraw; i++) {
                 let cardData;
-
                 if (allowRepeat) {
                     let s = suitMode === 'random' ? suits[Math.floor(Math.random() * 4)] : suits[parseInt(suitMode)];
                     let r = ranks[Math.floor(Math.random() * 13)];
                     cardData = { rank: r, suit: s };
                 } else {
-                    let filteredDeck = suitMode === 'random' 
-                        ? fullDeck 
-                        : fullDeck.filter(c => c.suit === suits[parseInt(suitMode)]);
-                    
+                    let filteredDeck = suitMode === 'random' ? fullDeck : fullDeck.filter(c => c.suit === suits[parseInt(suitMode)]);
                     if (filteredDeck.length === 0) {
-                        showToast(suitMode === 'random' ? "所有牌組已用完" : "指定花色的牌已用完");
-                        break;
+                        showToast("指定牌組已用完"); break;
                     }
                     if (drawHistory.length >= limit) {
-                        showToast("已達總數上限");
-                        break;
+                        showToast("已達上限"); break;
                     }
-
                     const idxInFiltered = Math.floor(Math.random() * filteredDeck.length);
                     cardData = filteredDeck[idxInFiltered];
-                    
-                    // 從主牌組移除
-                    const idxInFull = fullDeck.indexOf(cardData);
-                    fullDeck.splice(idxInFull, 1);
+                    fullDeck.splice(fullDeck.indexOf(cardData), 1);
                 }
-
                 drawHistory.unshift(cardData);
                 stage.appendChild(createCardElement(cardData.rank, cardData.suit, false, i * 0.1));
             }
@@ -401,7 +405,7 @@
 
         function resetDraw() {
             initDeck();
-            document.getElementById('main-stage').innerHTML = '<p class="text-gray-500 italic">紀錄與牌組已重新設定</p>';
+            document.getElementById('stage-content').innerHTML = '<p class="text-gray-500 italic">牌組已重新洗牌</p>';
         }
 
         // --- 找缺牌模式 ---
@@ -409,38 +413,45 @@
             const range = parseInt(document.getElementById('missing-range').value);
             const mCount = parseInt(document.getElementById('missing-count').value);
             const suitMode = document.getElementById('missing-suit').value;
-            const stage = document.getElementById('main-stage');
+            const stage = document.getElementById('stage-content');
+            const ansStage = document.getElementById('answer-stage');
+            const ansCards = document.getElementById('answer-cards');
+            
             stage.innerHTML = '';
+            ansCards.innerHTML = '';
+            ansStage.classList.add('opacity-0', 'pointer-events-none');
 
-            let suit;
-            if (suitMode === 'random') {
-                suit = suits[Math.floor(Math.random() * 4)];
-            } else {
-                suit = suits[parseInt(suitMode)];
-            }
-
+            let suit = suitMode === 'random' ? suits[Math.floor(Math.random() * 4)] : suits[parseInt(suitMode)];
             let tempPool = ranks.slice(0, range);
-            missingAnswers = [];
+            
+            missingAnswersData = [];
             for(let i=0; i<mCount; i++) {
                 const idx = Math.floor(Math.random() * tempPool.length);
-                missingAnswers.push(tempPool.splice(idx, 1)[0]);
+                const rankText = tempPool.splice(idx, 1)[0];
+                missingAnswersData.push({ rank: rankText, suit: suit });
             }
 
+            // 生成答案牌面 (預先生成但不顯示)
+            missingAnswersData.forEach(card => {
+                ansCards.appendChild(createCardElement(card.rank, card.suit, false, 0));
+            });
+
+            // 顯示題目
             const showCards = tempPool.sort(() => Math.random() - 0.5);
             showCards.forEach((r, idx) => {
                 stage.appendChild(createCardElement(r, suit, false, idx * 0.05));
             });
-
-            const ans = document.createElement('div');
-            ans.id = 'missing-ans';
-            ans.className = 'absolute bottom-6 right-6 bg-black/80 border border-white/20 p-4 rounded-xl hidden-answer';
-            ans.innerHTML = `<p class="text-[10px] text-gray-500 uppercase mb-1">缺失答案</p><p class="text-xl font-bold text-emerald-400">${missingAnswers.join(', ')}</p>`;
-            stage.appendChild(ans);
         }
 
         function toggleAnswer() {
-            const el = document.getElementById('missing-ans');
-            if(el) el.classList.toggle('hidden-answer');
+            const ansStage = document.getElementById('answer-stage');
+            if (ansStage.classList.contains('opacity-0')) {
+                ansStage.classList.remove('opacity-0', 'pointer-events-none');
+                ansStage.classList.add('ans-reveal');
+            } else {
+                ansStage.classList.add('opacity-0', 'pointer-events-none');
+                ansStage.classList.remove('ans-reveal');
+            }
         }
 
         // --- 記憶力模式 ---
@@ -448,21 +459,17 @@
             const count = parseInt(document.getElementById('memory-count').value);
             const time = parseInt(document.getElementById('memory-time').value);
             const suitMode = document.getElementById('memory-suit-mode').value;
-            const stage = document.getElementById('main-stage');
+            const stage = document.getElementById('stage-content');
             const revealBtn = document.getElementById('btn-reveal-memory');
             
             stage.innerHTML = '';
             memorySequence = [];
             revealBtn.disabled = true;
+            isMemoryActive = false;
 
             for(let i=0; i<count; i++) {
-                let s;
-                if (suitMode === 'random') {
-                    s = suits[Math.floor(Math.random() * 4)];
-                } else {
-                    s = suits[parseInt(suitMode)];
-                }
-                const r = ranks[Math.floor(Math.random() * 13)];
+                let s = suitMode === 'random' ? suits[Math.floor(Math.random() * 4)] : suits[parseInt(suitMode)];
+                let r = ranks[Math.floor(Math.random() * 13)];
                 memorySequence.push({rank: r, suit: s});
                 stage.appendChild(createCardElement(r, s, false, i * 0.1));
             }
@@ -471,8 +478,9 @@
             memoryTimer = setTimeout(() => {
                 const cards = stage.querySelectorAll('.card');
                 cards.forEach(c => c.classList.add('flipped'));
-                showToast("牌面已隱藏，請從實體牌組中排好！");
+                showToast("牌面已隱藏！可點擊單張翻開核對");
                 revealBtn.disabled = false;
+                isMemoryActive = true;
             }, time * 1000);
         }
 
