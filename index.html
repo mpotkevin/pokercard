@@ -253,8 +253,8 @@
                             </select>
                         </div>
                         <div class="sidebar-item p-3 rounded-xl">
-                            <label class="block text-xs text-gray-400 mb-1">記憶張數</label>
-                            <input type="number" id="memory-count" value="4" min="2" max="10" class="bg-transparent w-full text-xl font-bold outline-none">
+                            <label class="block text-xs text-gray-400 mb-1">記憶張數 (1-52)</label>
+                            <input type="number" id="memory-count" value="4" min="1" max="52" class="bg-transparent w-full text-xl font-bold outline-none">
                         </div>
                         <div class="sidebar-item p-3 rounded-xl">
                             <label class="block text-xs text-gray-400 mb-1">展示時間 (秒)</label>
@@ -297,7 +297,7 @@
                 </div>
             </div>
 
-            <!-- 懸浮答案顯示區 (找缺牌模式專用，位置與計時器共用) -->
+            <!-- 懸浮答案顯示區 (找缺牌模式專用) -->
             <div id="floating-ans-container" class="absolute bottom-6 right-6 bg-black/60 backdrop-blur-md border border-white/20 p-4 rounded-2xl hidden-answer flex flex-col items-center gap-2">
                 <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">缺失牌面</p>
                 <div id="floating-ans-cards" class="flex gap-2"></div>
@@ -482,7 +482,7 @@
         }
 
         function startMemory() {
-            const count = parseInt(document.getElementById('memory-count').value);
+            let count = parseInt(document.getElementById('memory-count').value);
             const time = parseInt(document.getElementById('memory-time').value);
             const suitMode = document.getElementById('memory-suit-mode').value;
             const stage = document.getElementById('cards-container');
@@ -494,20 +494,28 @@
             memorySequence = [];
             revealBtn.disabled = true;
 
+            // 準備不重複牌組
             let cardPool = [];
-            while(cardPool.length < count) {
-                let s = suitMode === 'random' ? suits[Math.floor(Math.random() * 4)] : suits[parseInt(suitMode)];
-                let r = ranks[Math.floor(Math.random() * 13)];
-                if(!cardPool.some(c => c.rank === r && c.suit.name === s.name)) {
-                    cardPool.push({rank: r, suit: s});
-                }
-                if(suitMode !== 'random' && count > 13) {
-                    showToast("警告：指定花色上限為13張");
-                    break;
+            let sourceDeck = [];
+
+            if (suitMode === 'random') {
+                // 從 52 張牌中準備
+                suits.forEach(s => ranks.forEach(r => sourceDeck.push({ rank: r, suit: s })));
+                if (count > 52) count = 52;
+            } else {
+                // 從指定花色的 13 張中準備
+                let s = suits[parseInt(suitMode)];
+                ranks.forEach(r => sourceDeck.push({ rank: r, suit: s }));
+                if (count > 13) {
+                    showToast("指定花色上限為 13 張");
+                    count = 13;
                 }
             }
 
-            memorySequence = cardPool;
+            // 洗牌並抽取
+            sourceDeck.sort(() => Math.random() - 0.5);
+            memorySequence = sourceDeck.slice(0, count);
+
             memorySequence.forEach((card, i) => {
                 stage.appendChild(createCardElement(card.rank, card.suit, false, i * 0.1));
             });
