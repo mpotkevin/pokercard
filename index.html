@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>極致質感撲克訓練工具</title>
+    <title>撲克認知訓練遊戲</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -64,27 +64,38 @@
             background: linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%);
             display: flex;
             flex-direction: column;
-            padding: 8px;
+            padding: 10px;
         }
 
+        /* 放大角落字體與符號 */
         .card-rank-small {
             font-family: 'Libre Baskerville', serif;
-            font-size: 1.25rem;
-            line-height: 1;
+            font-size: 1.75rem; 
+            line-height: 0.9;
             font-weight: bold;
         }
         
         .card-suit-small {
-            font-size: 0.875rem;
+            font-size: 1.2rem;
         }
 
         .card-suit-center {
             position: absolute;
-            top: 50%;
+            top: 55%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 3.5rem;
+            font-size: 4rem;
             opacity: 0.9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 人頭牌圖示樣式 */
+        .face-icon {
+            width: 70px;
+            height: 70px;
+            stroke-width: 1.5;
         }
 
         .card-back {
@@ -147,7 +158,7 @@
     <header class="bg-black/40 backdrop-blur-md p-4 border-b border-white/10 flex justify-between items-center px-8">
         <h1 class="text-xl font-bold flex items-center gap-3 tracking-wider">
             <span class="bg-indigo-600 p-1.5 rounded-lg"><i data-lucide="playing-cards" class="w-5 h-5"></i></span>
-            撲克認知訓練系統
+            撲克認知訓練遊戲
         </h1>
         <nav class="flex gap-1 bg-white/5 p-1 rounded-xl">
             <button onclick="setMode('draw')" id="btn-draw" class="px-4 py-2 rounded-lg text-sm transition-all font-medium">隨機抽牌</button>
@@ -182,11 +193,17 @@
                         </div>
                         <div class="sidebar-item p-3 rounded-xl">
                             <label class="block text-xs text-gray-400 mb-1">總數上限</label>
-                            <input type="number" id="draw-max" value="12" min="1" max="52" class="bg-transparent w-full text-xl font-bold outline-none">
+                            <input type="number" id="draw-max" value="52" min="1" max="52" class="bg-transparent w-full text-xl font-bold outline-none">
                         </div>
-                        <div class="flex items-center gap-3 px-1">
-                            <input type="checkbox" id="allow-repeat" class="w-5 h-5 rounded accent-indigo-500">
-                            <label for="allow-repeat" class="text-sm text-gray-300">允許重複牌面</label>
+                        <div class="space-y-2 px-1">
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" id="allow-repeat" class="w-5 h-5 rounded accent-indigo-500">
+                                <label for="allow-repeat" class="text-sm text-gray-300">允許重複牌面</label>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" id="draw-exclude-face" class="w-5 h-5 rounded accent-indigo-500">
+                                <label for="draw-exclude-face" class="text-sm text-gray-300 font-bold text-indigo-300">剔除人頭牌 (JQK)</label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -252,6 +269,16 @@
                             <label class="block text-xs text-gray-400 mb-1">展示時間 (秒)</label>
                             <input type="number" id="memory-time" value="5" min="1" max="30" class="bg-transparent w-full text-xl font-bold outline-none">
                         </div>
+                        <div class="space-y-2 px-1">
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" id="memory-allow-repeat" class="w-5 h-5 rounded accent-orange-500">
+                                <label for="memory-allow-repeat" class="text-sm text-gray-300">允許重複牌面</label>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" id="memory-exclude-face" class="w-5 h-5 rounded accent-orange-500">
+                                <label for="memory-exclude-face" class="text-sm text-gray-300 font-bold text-orange-300">剔除人頭牌 (JQK)</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <button onclick="startMemory()" class="w-full bg-orange-600 hover:bg-orange-500 text-white py-4 rounded-2xl font-bold shadow-lg shadow-orange-500/20 transition-all active:scale-95">
@@ -260,7 +287,6 @@
                 <button onclick="revealMemory()" id="btn-reveal-memory" disabled class="w-full border border-white/10 text-gray-300 py-3 rounded-xl hover:bg-white/5 transition disabled:opacity-30">
                     核對全部答案
                 </button>
-                <p class="text-[10px] text-gray-500 text-center italic">點擊牌面即可手動翻開/蓋上</p>
             </div>
 
             <!-- 模式四：數字排序 -->
@@ -287,10 +313,8 @@
                 <button onclick="generateSort()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white py-4 rounded-2xl font-bold shadow-lg shadow-cyan-500/20 transition-all active:scale-95">
                     打亂排序
                 </button>
-                <p class="text-[10px] text-gray-500 text-center italic">請觀察亂序題目並排列實體撲克牌</p>
             </div>
 
-            <!-- 底部歷史區 -->
             <div id="history-section" class="mt-auto hidden border-t border-white/10 pt-6">
                 <p class="text-[10px] text-gray-500 uppercase tracking-tighter mb-2">歷史抽取紀錄</p>
                 <div id="history-list" class="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-2"></div>
@@ -300,7 +324,6 @@
         <!-- 右側展示區 -->
         <section id="main-stage" class="flex-grow relative bg-gradient-to-br from-gray-900 to-black p-4 flex flex-col justify-center items-center overflow-hidden">
             
-            <!-- 觀察倒數 (右下角) -->
             <div id="memory-timer" class="absolute bottom-6 right-6 bg-orange-600/40 backdrop-blur-md border border-orange-500/50 px-5 py-3 rounded-2xl hidden flex flex-col items-center gap-1 z-10 animate-pulse-timer shadow-2xl">
                 <span class="text-orange-200 font-bold uppercase text-[10px] tracking-widest">觀察倒數</span>
                 <div class="flex items-center gap-2">
@@ -309,7 +332,6 @@
                 </div>
             </div>
 
-            <!-- 容器：預設維持自動換行 -->
             <div id="cards-container" class="flex flex-wrap justify-center items-center gap-3 w-full p-4 overflow-y-auto">
                 <div class="text-center text-gray-600">
                     <i data-lucide="mouse-pointer-2" class="w-12 h-12 mx-auto mb-4 opacity-20"></i>
@@ -317,7 +339,6 @@
                 </div>
             </div>
 
-            <!-- 懸浮答案顯示區 -->
             <div id="floating-ans-container" class="absolute bottom-6 right-6 bg-black/60 backdrop-blur-md border border-white/20 p-4 rounded-2xl hidden-answer flex flex-col items-center gap-2">
                 <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">缺失牌面</p>
                 <div id="floating-ans-cards" class="flex gap-2"></div>
@@ -325,7 +346,11 @@
         </section>
     </main>
 
-    <!-- Toast 提示 -->
+    <!-- 頁尾設計資訊 -->
+    <footer class="bg-black/60 backdrop-blur-md border-t border-white/10 py-3 text-center text-xs text-gray-500">
+        設計：<a href="https://www.facebook.com/mpotkevin" target="_blank" class="text-indigo-400 hover:text-indigo-300 underline transition-colors">職能治療師 - 鄭凱文</a>
+    </footer>
+
     <div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-white text-black px-6 py-2 rounded-full font-bold shadow-2xl transition-all opacity-0 scale-90 pointer-events-none z-50">
         提示
     </div>
@@ -358,20 +383,27 @@
             }, 2000);
         }
 
+        // 核心：生成卡片，包含人頭牌邏輯與大字體
         function createCardElement(rank, suitObj, isBack = false, delay = 0, isMini = false) {
             const card = document.createElement('div');
             card.className = `card ${isBack ? 'flipped' : ''} ${isMini ? 'mini' : ''}`;
             card.style.animationDelay = `${delay}s`;
             
+            // 決定中央顯示內容
+            let centerContent = suitObj.char;
+            if (rank === 'J') centerContent = `<i data-lucide="user-square" class="face-icon"></i>`;
+            else if (rank === 'Q') centerContent = `<i data-lucide="user-round" class="face-icon"></i>`; // Q 皇后頭像
+            else if (rank === 'K') centerContent = `<i data-lucide="crown" class="face-icon"></i>`;     // K 國王皇冠
+
             const content = `
                 <div class="card-inner">
                     <div class="card-front" style="color: ${suitObj.color}">
-                        <div class="absolute top-1 left-1 flex flex-col items-center">
+                        <div class="absolute top-1 left-2 flex flex-col items-center">
                             <span class="card-rank-small">${rank}</span>
                             <span class="card-suit-small">${suitObj.char}</span>
                         </div>
-                        <div class="card-suit-center">${suitObj.char}</div>
-                        <div class="absolute bottom-1 right-1 flex flex-col items-center rotate-180">
+                        <div class="card-suit-center">${centerContent}</div>
+                        <div class="absolute bottom-1 right-2 flex flex-col items-center rotate-180">
                             <span class="card-rank-small">${rank}</span>
                             <span class="card-suit-small">${suitObj.char}</span>
                         </div>
@@ -388,21 +420,15 @@
             currentMode = mode;
             if(countdownInterval) clearInterval(countdownInterval);
             document.getElementById('memory-timer').classList.add('hidden');
-
             document.querySelectorAll('.mode-control').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('nav button').forEach(el => el.classList.remove('bg-indigo-600', 'text-white'));
-            
             document.getElementById(`controls-${mode}`).classList.remove('hidden');
             document.getElementById(`btn-${mode}`).classList.add('bg-indigo-600', 'text-white');
-            
             const stage = document.getElementById('cards-container');
-            // 確保容器始終維持 Grid/Wrap 佈局
             stage.className = "flex flex-wrap justify-center items-center gap-3 w-full p-4 overflow-y-auto";
             stage.innerHTML = '';
-            
             document.getElementById('floating-ans-container').classList.remove('show-answer-box');
             document.getElementById('history-section').classList.add('hidden');
-            
             if (mode === 'draw') {
                 initDeck();
                 document.getElementById('history-section').classList.remove('hidden');
@@ -421,6 +447,7 @@
             const numToDraw = parseInt(document.getElementById('draw-per-time').value) || 1;
             const limit = parseInt(document.getElementById('draw-max').value);
             const allowRepeat = document.getElementById('allow-repeat').checked;
+            const excludeFace = document.getElementById('draw-exclude-face').checked;
             const suitMode = document.getElementById('draw-suit').value;
             const stage = document.getElementById('cards-container');
             
@@ -430,10 +457,13 @@
                 let cardData;
                 if (allowRepeat) {
                     let s = suitMode === 'random' ? suits[Math.floor(Math.random() * 4)] : suits[parseInt(suitMode)];
-                    let r = ranks[Math.floor(Math.random() * 13)];
+                    let tempRanks = excludeFace ? ranks.filter(r => !['J','Q','K'].includes(r)) : ranks;
+                    let r = tempRanks[Math.floor(Math.random() * tempRanks.length)];
                     cardData = { rank: r, suit: s };
                 } else {
                     let filteredDeck = suitMode === 'random' ? fullDeck : fullDeck.filter(c => c.suit === suits[parseInt(suitMode)]);
+                    if (excludeFace) filteredDeck = filteredDeck.filter(c => !['J','Q','K'].includes(c.rank));
+
                     if (filteredDeck.length === 0) {
                         showToast("牌組已抽完"); break;
                     }
@@ -448,6 +478,7 @@
                 stage.appendChild(createCardElement(cardData.rank, cardData.suit, false, i * 0.1));
             }
             updateHistoryUI();
+            lucide.createIcons();
         }
 
         function updateHistoryUI() {
@@ -473,14 +504,11 @@
             const suitMode = document.getElementById('missing-suit').value;
             const stage = document.getElementById('cards-container');
             const ansContainer = document.getElementById('floating-ans-cards');
-            
             stage.innerHTML = '';
             ansContainer.innerHTML = '';
             document.getElementById('floating-ans-container').classList.remove('show-answer-box');
-
             let suit = suitMode === 'random' ? suits[Math.floor(Math.random() * 4)] : suits[parseInt(suitMode)];
             let tempPool = ranks.slice(0, range);
-            
             missingAnswers = [];
             for(let i=0; i<mCount; i++) {
                 const idx = Math.floor(Math.random() * tempPool.length);
@@ -488,11 +516,11 @@
                 missingAnswers.push({ rank: missingRank, suit: suit });
                 ansContainer.appendChild(createCardElement(missingRank, suit, false, 0, true));
             }
-
             const showCards = tempPool.sort(() => Math.random() - 0.5);
             showCards.forEach((r, idx) => {
                 stage.appendChild(createCardElement(r, suit, false, idx * 0.05));
             });
+            lucide.createIcons();
         }
 
         function toggleAnswer() {
@@ -504,6 +532,9 @@
             let count = parseInt(document.getElementById('memory-count').value);
             const time = parseInt(document.getElementById('memory-time').value);
             const suitMode = document.getElementById('memory-suit-mode').value;
+            const excludeFace = document.getElementById('memory-exclude-face').checked;
+            const allowRepeat = document.getElementById('memory-allow-repeat').checked;
+            
             const stage = document.getElementById('cards-container');
             const revealBtn = document.getElementById('btn-reveal-memory');
             const timerBox = document.getElementById('memory-timer');
@@ -513,18 +544,25 @@
             memorySequence = [];
             revealBtn.disabled = true;
 
-            let sourceDeck = [];
+            let sourcePool = [];
             if (suitMode === 'random') {
-                suits.forEach(s => ranks.forEach(r => sourceDeck.push({ rank: r, suit: s })));
-                if (count > 52) count = 52;
+                suits.forEach(s => ranks.forEach(r => sourcePool.push({ rank: r, suit: s })));
             } else {
                 let s = suits[parseInt(suitMode)];
-                ranks.forEach(r => sourceDeck.push({ rank: r, suit: s }));
-                if (count > 13) { showToast("花色上限為 13 張"); count = 13; }
+                ranks.forEach(r => sourcePool.push({ rank: r, suit: s }));
             }
 
-            sourceDeck.sort(() => Math.random() - 0.5);
-            memorySequence = sourceDeck.slice(0, count);
+            if (excludeFace) sourcePool = sourcePool.filter(c => !['J','Q','K'].includes(c.rank));
+
+            if (allowRepeat) {
+                for(let i=0; i<count; i++) {
+                    memorySequence.push(sourcePool[Math.floor(Math.random() * sourcePool.length)]);
+                }
+            } else {
+                if (count > sourcePool.length) count = sourcePool.length;
+                sourcePool.sort(() => Math.random() - 0.5);
+                memorySequence = sourcePool.slice(0, count);
+            }
 
             memorySequence.forEach((card, i) => {
                 stage.appendChild(createCardElement(card.rank, card.suit, false, i * 0.1));
@@ -532,11 +570,9 @@
 
             if(countdownInterval) clearInterval(countdownInterval);
             if(memoryTimer) clearTimeout(memoryTimer);
-
             let timeLeft = time;
             timerSec.innerText = timeLeft;
             timerBox.classList.remove('hidden');
-
             countdownInterval = setInterval(() => {
                 timeLeft--;
                 timerSec.innerText = timeLeft;
@@ -545,13 +581,13 @@
                     timerBox.classList.add('hidden');
                 }
             }, 1000);
-
             memoryTimer = setTimeout(() => {
                 const cards = stage.querySelectorAll('.card');
                 cards.forEach(c => c.classList.add('flipped'));
-                showToast("牌面已覆蓋，點擊可單張翻開");
+                showToast("牌面已覆蓋");
                 revealBtn.disabled = false;
             }, time * 1000);
+            lucide.createIcons();
         }
 
         function revealMemory() {
@@ -560,25 +596,21 @@
             document.getElementById('btn-reveal-memory').disabled = true;
         }
 
-        // --- 數字排序模式 (恢復為原始 Grid/Wrap 佈局) ---
+        // --- 數字排序模式 ---
         function generateSort() {
             const range = parseInt(document.getElementById('sort-range').value);
             const suitMode = document.getElementById('sort-suit').value;
             const stage = document.getElementById('cards-container');
-            
-            // 恢復為自動換行的佈局
             stage.className = "flex flex-wrap justify-center items-center gap-3 w-full p-4 overflow-y-auto";
             stage.innerHTML = '';
-
             let suit = suitMode === 'random' ? suits[Math.floor(Math.random() * 4)] : suits[parseInt(suitMode)];
             let pool = ranks.slice(0, range);
             pool.sort(() => Math.random() - 0.5);
-
             pool.forEach((r, idx) => {
                 stage.appendChild(createCardElement(r, suit, false, idx * 0.05));
             });
-
-            showToast(`已打亂 1 到 ${range} 的順序`);
+            lucide.createIcons();
+            showToast(`已打亂順序`);
         }
 
         window.onload = () => {
